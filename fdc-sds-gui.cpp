@@ -40,7 +40,7 @@
 *             number in Parameter 2. The Server responds with drive mount status
 *             (see below). The LSB of Parameter 1 contains the currently selected
 *             drive number or 0xff is no drive is selected. The MSB of parameter 1
-*             is zero if the head is loaded, non-zero if not loaded.
+;             is non-zero if the head is loaded, zero if not loaded.
 *
 *             The FDC issues the STAT command about ten times per second so that
 *             head status and track number information is updated quickly. The 
