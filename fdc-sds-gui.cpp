@@ -367,13 +367,6 @@ void FDCDialog::timerSlot()
 	cmdBufIdx = 0;
 
 	// Calculate and validate checksum
-//	checksum = 0;
-
-//	for (i = 0; i < COMMAND_LENGTH; i++) {
-//		checksum += cmdBuf.asBytes[i];
-//		debugWindow->append(QString("byte=%1 chksum=%2").arg((ushort)cmdBuf.asBytes[i]).arg(checksum,4,16));
-//	}
-
 	checksum = calcChecksum(cmdBuf.asBytes, COMMAND_LENGTH);
 
 	if (checksum != cmdBuf.checksum) {
@@ -411,10 +404,6 @@ void FDCDialog::timerSlot()
 			return;	// Ignore reads past end of file
 		}
 
-//		checksum = 0;
-//		for (i = 0; i < trackLen; i++) {
-//			checksum += trackBuf[i];
-//		}
 		checksum = calcChecksum(trackBuf, trackLen);
 		trackBuf[trackLen] = checksum & 0x00ff;			// LSB of checksum
 		trackBuf[trackLen+1] = (checksum >> 8) & 0x00ff;	// MSB of checksum
@@ -454,10 +443,6 @@ void FDCDialog::timerSlot()
 		}
 
 		// Send WRIT response
-//		cmdBuf.checksum = 0;
-//		for (i = 0; i < COMMAND_LENGTH; i++) {
-//			cmdBuf.checksum += cmdBuf.asBytes[i];
-//		}
 		cmdBuf.checksum = calcChecksum(cmdBuf.asBytes, COMMAND_LENGTH);
 
 		if (cmdBuf.rcode == STAT_OK) {
@@ -473,10 +458,6 @@ void FDCDialog::timerSlot()
 
 			debugWindow->append(QString("WRIT received %1 byte track").arg(trkBufIdx));
 
-//			checksum = 0;
-//			for (i = 0; i < trackLen; i++) {
-//				checksum += trackBuf[i];
-//			}
 			checksum = calcChecksum(trackBuf, trackLen);
 
 			if ((trkBufIdx = trackLen+2)
@@ -498,11 +479,6 @@ void FDCDialog::timerSlot()
 			cmdBuf.command[1] = 'S';
 			cmdBuf.command[2] = 'T';
 			cmdBuf.command[3] = 'A';
-
-//			cmdBuf.checksum = 0;
-//			for (i = 0; i < COMMAND_LENGTH; i++) {
-//				cmdBuf.checksum += cmdBuf.asBytes[i];
-//			}
 			cmdBuf.checksum = calcChecksum(cmdBuf.asBytes, COMMAND_LENGTH);
 		}
 
@@ -530,10 +506,6 @@ void FDCDialog::timerSlot()
 			}
 		}
 
-//		cmdBuf.checksum = 0;
-//		for (i = 0; i < COMMAND_LENGTH; i++) {
-//			cmdBuf.checksum += cmdBuf.asBytes[i];
-//		}
 		cmdBuf.checksum = calcChecksum(cmdBuf.asBytes, COMMAND_LENGTH);
 
 		serialPort->write((char *) cmdBuf.asBytes, CMDBUF_SIZE);
@@ -581,7 +553,6 @@ void FDCDialog::updateIndicators(int drive)
 		}
 
 		enabledLabel[drive]->setPixmap(*grnLED);
-//		enabledLabel[drive]->repaint();
 
 		if (headStatus[drive]) {
 			headloadLabel[drive]->setPixmap(*grnLED);
