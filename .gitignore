@@ -30,3 +30,15 @@
 *.exe
 *.out
 *.app
+
+# Qt
+Makefile
+.qmake.*
+moc_*.*
+
+# fdc-sds-gui
+*.dsk
+main.pas
+
+# Mac
+.DS_Store
