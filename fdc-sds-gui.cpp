@@ -118,7 +118,7 @@
 FDCDialog::FDCDialog(QWidget *parent)
 	: QDialog(parent)
 {
-	int drive;
+	int driveNum,row;
 
 	// Title
 	setWindowTitle(tr("FDC+ Serial Drive Server"));
@@ -138,70 +138,71 @@ FDCDialog::FDCDialog(QWidget *parent)
 	QHBoxLayout *enabledLayout[MAX_DRIVE];
 	QHBoxLayout *headloadLayout[MAX_DRIVE];
 	QHBoxLayout *infoLayout = new QHBoxLayout;
+	QVBoxLayout *dashboardLayout = new QVBoxLayout;
 
 	// Setup drive widgets and status
-	for (drive = 0; drive < MAX_DRIVE; drive++) {
-		row1Layout[drive] = new QHBoxLayout;
-		row2Layout[drive] = new QHBoxLayout;
-		row3Layout[drive] = new QHBoxLayout;
+	for (driveNum = 0; driveNum < MAX_DRIVE; driveNum++) {
+		row1Layout[driveNum] = new QHBoxLayout;
+		row2Layout[driveNum] = new QHBoxLayout;
+		row3Layout[driveNum] = new QHBoxLayout;
 
-		label = new QLabel(QString("Drive %1").arg(drive));
-		row1Layout[drive]->addWidget(label);
+		label = new QLabel(QString("Drive %1").arg(driveNum));
+		row1Layout[driveNum]->addWidget(label);
 		label = new QLabel(tr("Track"));
-		row1Layout[drive]->addWidget(label);
+		row1Layout[driveNum]->addWidget(label);
 
-		trackProgress[drive] = new QProgressBar;
-		trackProgress[drive]->setMinimum(0);
-		trackProgress[drive]->setFormat(QString("%v"));
-		trackProgress[drive]->setAlignment(Qt::AlignLeft);  
-		trackProgress[drive]->setTextVisible(false);
-		row1Layout[drive]->addWidget(trackProgress[drive]);
+		trackProgress[driveNum] = new QProgressBar;
+		trackProgress[driveNum]->setMinimum(0);
+		trackProgress[driveNum]->setFormat(QString("%v"));
+		trackProgress[driveNum]->setAlignment(Qt::AlignLeft);  
+		trackProgress[driveNum]->setTextVisible(false);
+		row1Layout[driveNum]->addWidget(trackProgress[driveNum]);
 
-		fileName[drive] = new QLineEdit;
-		fileName[drive]->setReadOnly(true);
-		fileName[drive]->setEnabled(false);
-		row2Layout[drive]->addWidget(fileName[drive]);
+		fileName[driveNum] = new QLineEdit;
+		fileName[driveNum]->setReadOnly(true);
+		fileName[driveNum]->setEnabled(false);
+		row2Layout[driveNum]->addWidget(fileName[driveNum]);
 
-		loadButton[drive] = new QPushButton(tr("Load"), this);
-		unloadButton[drive] = new QPushButton(tr("Unload"), this);
-		unloadButton[drive]->setEnabled(false);
+		loadButton[driveNum] = new QPushButton(tr("Load"), this);
+		unloadButton[driveNum] = new QPushButton(tr("Unload"), this);
+		unloadButton[driveNum]->setEnabled(false);
 
-		enabledLayout[drive] = new QHBoxLayout;
+		enabledLayout[driveNum] = new QHBoxLayout;
 		label = new QLabel(tr("Enabled"));
-		enabledLabel[drive] = new QLabel;
-		enabledLabel[drive]->setPixmap(*redLED);
-		enabledLayout[drive]->addWidget(label);
-		enabledLayout[drive]->addWidget(enabledLabel[drive]);
+		enabledLabel[driveNum] = new QLabel;
+		enabledLabel[driveNum]->setPixmap(*redLED);
+		enabledLayout[driveNum]->addWidget(label);
+		enabledLayout[driveNum]->addWidget(enabledLabel[driveNum]);
 
-		headloadLayout[drive] = new QHBoxLayout;
+		headloadLayout[driveNum] = new QHBoxLayout;
 		label = new QLabel(tr("Head Load"));
-		headloadLabel[drive] = new QLabel;
-		headloadLabel[drive]->setPixmap(*redLED);
-		headloadLayout[drive]->addWidget(label);
-		headloadLayout[drive]->addWidget(headloadLabel[drive]);
+		headloadLabel[driveNum] = new QLabel;
+		headloadLabel[driveNum]->setPixmap(*redLED);
+		headloadLayout[driveNum]->addWidget(label);
+		headloadLayout[driveNum]->addWidget(headloadLabel[driveNum]);
 
-		row3Layout[drive]->addWidget(loadButton[drive]);
-		row3Layout[drive]->addWidget(unloadButton[drive]);
-		row3Layout[drive]->addLayout(enabledLayout[drive]);
-		row3Layout[drive]->addLayout(headloadLayout[drive]);
+		row3Layout[driveNum]->addWidget(loadButton[driveNum]);
+		row3Layout[driveNum]->addWidget(unloadButton[driveNum]);
+		row3Layout[driveNum]->addLayout(enabledLayout[driveNum]);
+		row3Layout[driveNum]->addLayout(headloadLayout[driveNum]);
 
-		connect(loadButton[drive], &QPushButton::clicked, [this, drive] { loadButtonSlot(drive); });
-		connect(unloadButton[drive], &QPushButton::clicked, [this, drive] { unloadButtonSlot(drive); });
+		connect(loadButton[driveNum], &QPushButton::clicked, [this, driveNum] { loadButtonSlot(driveNum); });
+		connect(unloadButton[driveNum], &QPushButton::clicked, [this, driveNum] { unloadButtonSlot(driveNum); });
 
-		driveLayout[drive] = new QVBoxLayout;
-		driveLayout[drive]->addLayout(row1Layout[drive]);
-		driveLayout[drive]->addLayout(row2Layout[drive]);
-		driveLayout[drive]->addLayout(row3Layout[drive]);
+		driveLayout[driveNum] = new QVBoxLayout;
+		driveLayout[driveNum]->addLayout(row1Layout[driveNum]);
+		driveLayout[driveNum]->addLayout(row2Layout[driveNum]);
+		driveLayout[driveNum]->addLayout(row3Layout[driveNum]);
 
-		driveGroup[drive] = new QGroupBox;
-		driveGroup[drive]->setLayout(driveLayout[drive]);
+		driveGroup[driveNum] = new QGroupBox;
+		driveGroup[driveNum]->setLayout(driveLayout[driveNum]);
 
-		curTrack[drive] = 0;
-		enableStatus[drive] = false;
-		headStatus[drive] = false;
+		curTrack[driveNum] = 0;
+		enableStatus[driveNum] = false;
+		headStatus[driveNum] = false;
 
-		openMode[drive] = QIODevice::ReadWrite;
-		driveFile[drive] = new QFile;
+		openMode[driveNum] = QIODevice::ReadWrite;
+		driveFile[driveNum] = new QFile;
 	}
 
 	// Information
@@ -218,7 +219,6 @@ FDCDialog::FDCDialog(QWidget *parent)
 	}
 	serialPortBox->setPlaceholderText(tr("None"));
 	serialPortBox->setCurrentIndex(-1);
-	serialPortBox->setStyleSheet("color: white;");
 	connect(serialPortBox, QOverload<int>::of(&QComboBox::currentIndexChanged), [this](int index){ serialPortSlot(index); });
 
 	commLayout->addWidget(serialPortBox);
@@ -227,17 +227,27 @@ FDCDialog::FDCDialog(QWidget *parent)
 	baudRateBox->addItem("230.4K", 230400);
 	baudRateBox->addItem("403.2K", 403200);
 	baudRateBox->addItem("460.8K", 460800);
-	baudRateBox->setStyleSheet("color: white;");
 	connect(baudRateBox, QOverload<int>::of(&QComboBox::currentIndexChanged), [this](int index){ baudRateSlot(index); });
 
 	commLayout->addWidget(baudRateBox);
 
 	mainLayout->addLayout(commLayout);
 
-	for (drive = 0; drive < MAX_DRIVE; drive++) {
-		mainLayout->addWidget(driveGroup[drive]);
+	for (driveNum = 0; driveNum < MAX_DRIVE; driveNum++) {
+		mainLayout->addWidget(driveGroup[driveNum]);
 	}
 
+	// Dashboard
+	QFont monoFont("Courier New", 10);
+
+	for (row = 0; row < DASHBOARD_ROWS; row++) {
+		dashboardLabel[row] = new QLabel;
+		dashboardLabel[row]->setFont(monoFont);
+		dashboardLayout->addWidget(dashboardLabel[row]);
+	}
+	mainLayout->addLayout(dashboardLayout);
+
+	// Information Line
 	mainLayout->addLayout(infoLayout);
 
 	setLayout(mainLayout);
@@ -253,14 +263,26 @@ FDCDialog::FDCDialog(QWidget *parent)
 	connect(timer, &QTimer::timeout, this, &FDCDialog::timerSlot);
 	timer->start();
 
-	debugWindow = new QTextEdit;
-	this->layout()->addWidget(debugWindow);
+	// Counters
+	statCount = 0;
+	readCount = 0;
+	writCount = 0;
+	errCount = 0;
+
+	savePath = QCoreApplication::applicationDirPath();
+
+	// MacOS stores the application in <dir>/<name>.app/Contents/MacOS
+	// If running on MacOS, move up 3 directories to get in the actual
+	// application launch directory. It's a shame that Qt5 doesn't
+	// provide a "standard" method of doing this.
+#ifdef Q_OS_MAC
+	savePath = savePath + "../../../";
+#endif
 }
 
 void FDCDialog::serialPortSlot(int index)
 {
 	serialPort->setPortName(serialPortBox->itemText(index));
-	QMessageBox::information(this, "Serial Port", QString("Setting serial port to '%1'").arg(serialPort->portName()));
 
 	updateSerialPort();
 }
@@ -268,7 +290,6 @@ void FDCDialog::serialPortSlot(int index)
 void FDCDialog::baudRateSlot(int index)
 {
 	baudRate = baudRateBox->itemData(index).toInt();
-	QMessageBox::information(this, "Baud Rate", QString("Setting baud rate to %1").arg(baudRate));
 
 	updateSerialPort();
 }
@@ -327,7 +348,7 @@ void FDCDialog::unloadButtonSlot(int drive)
 		enableStatus[drive] = false;
 		headStatus[drive] = false;
 
-		updateIndicators(drive);
+		updateIndicators();
 
 		loadButton[drive]->setEnabled(true);
 		loadButton[drive]->setFocus(Qt::OtherFocusReason);
@@ -344,6 +365,13 @@ void FDCDialog::timerSlot()
 	qint64 bytesAvail;
 	quint16 checksum;
 
+	// Clear last error text
+	if (errTimeout) {
+		if (--errTimeout == 0) {
+			dashboardLabel[DASHBOARD_ERRT]->setText("");
+		}
+	}
+
 	if (!serialPort->isOpen()) {
 		return;
 	}
@@ -357,7 +385,7 @@ void FDCDialog::timerSlot()
 
 	cmdBufIdx += bytesRead;
 
-	debugWindow->append(QString("Received %1 bytes. Index %2.").arg(bytesRead).arg(cmdBufIdx));
+//	debugWindow->append(QString("Received %1 bytes. Index %2.").arg(bytesRead).arg(cmdBufIdx));
 
 	if (cmdBufIdx < CMDBUF_SIZE) {
 		cmdBuf.asBytes[cmdBufIdx] = 0;
@@ -370,18 +398,25 @@ void FDCDialog::timerSlot()
 	checksum = calcChecksum(cmdBuf.asBytes, COMMAND_LENGTH);
 
 	if (checksum != cmdBuf.checksum) {
-		debugWindow->append(QString("calc=%1 recv=%2").arg(checksum,4,16).arg(cmdBuf.checksum,4,16));
+		displayError(QString("CRC ERROR calc=%1 recv=%2").arg(checksum,4,16).arg(cmdBuf.checksum,4,16));
 	}
 
 	// READ command
 	if (QString(cmdBuf.command).left(4) == QString("READ")) {
-		debugWindow->append(QString("READ command"));
+		readCount++;
+		dashboardLabel[DASHBOARD_READ]->setText(QString("READ %1").arg(readCount,6,10,QChar('0')));
 
 		driveNum = cmdBuf.param1 >> 12;
+		if (driveNum > MAX_DRIVE) {
+			return;
+		}
+
+		enableDrive(driveNum);
+		enableHead(driveNum);
 
 		// If drive not mounted, ignore
 		if (!driveFile[driveNum]->isOpen()) {
-			debugWindow->append(QString("READ failed - drive %1 not mounted").arg(driveNum));
+			displayError(QString("READ error - drive %1 not loaded").arg(driveNum));
 			return;
 		}
 
@@ -391,16 +426,18 @@ void FDCDialog::timerSlot()
 
 		// If the requested track length is too long, ignore
 		if (trackLen > TRACKBUF_LEN) {
-			debugWindow->append(QString("READ failed - request track len %1 > %2 bytes").arg(trackLen).arg(TRACKBUF_LEN));
+			displayError(QString("READ requested track len %1 > %2 bytes").arg(trackLen).arg(TRACKBUF_LEN));
 			return;
 		}
 
-		updateIndicators(driveNum);
+		updateIndicators();
 
-		driveFile[driveNum]->seek(curTrack[driveNum] * trackLen);
+		if (!(driveFile[driveNum]->seek(curTrack[driveNum] * trackLen))) {
+			displayError(QString("READ error seeking to %1").arg(curTrack[driveNum] * trackLen));
+		}
 
 		if ((bytesRead = driveFile[driveNum]->read((char *) trackBuf, trackLen)) != trackLen) {
-			debugWindow->append(QString("READ failed - read %1 of %2 bytes").arg(bytesRead).arg(trackLen));
+//			debugWindow->append(QString("READ failed - read %1 of %2 bytes").arg(bytesRead).arg(trackLen));
 			return;	// Ignore reads past end of file
 		}
 
@@ -410,23 +447,31 @@ void FDCDialog::timerSlot()
 
 		serialPort->write((char *) trackBuf, trackLen + 2);
 
-		debugWindow->append(QString("READ response %1 bytes + crc").arg(trackLen));
+//		debugWindow->append(QString("READ response %1 bytes + crc").arg(trackLen));
 	}
 
 	// WRIT command
 	else if (QString(cmdBuf.command).left(4) == QString("WRIT")) {
-		debugWindow->append(QString("WRIT command"));
+		writCount++;
+		dashboardLabel[DASHBOARD_WRIT]->setText(QString("WRIT %1").arg(writCount,6,10,QChar('0')));
 
 		driveNum = cmdBuf.param1 >> 12;
+		if (driveNum > MAX_DRIVE) {
+			return;
+		}
+
 		curTrack[driveNum] = cmdBuf.param1 & 0x0fff;
 		trackLen = cmdBuf.param2;
 
-		debugWindow->append(QString("WRIT driveNum=%1 track=%2 tracklen=%3").arg(driveNum).arg(curTrack[driveNum]).arg(trackLen));
+		enableDrive(driveNum);
+		enableHead(driveNum);
+
+//		debugWindow->append(QString("WRIT driveNum=%1 track=%2 tracklen=%3").arg(driveNum).arg(curTrack[driveNum]).arg(trackLen));
 
 		// If drive not mounted, ignore
 		if (!driveFile[driveNum]->isOpen()) {
+			displayError(QString("WRIT error - drive %1 not loaded").arg(driveNum));
 			cmdBuf.rcode = STAT_NOT_READY;
-			debugWindow->append(QString("WRITE failed - drive %1 not mounted").arg(driveNum));
 		}
 		else {
 			cmdBuf.rcode = STAT_OK;
@@ -434,19 +479,20 @@ void FDCDialog::timerSlot()
 
 		// If the requested track length is too long, ignore
 		if (trackLen > TRACKBUF_LEN) {
-			debugWindow->append(QString("WRIT failed - request track len %1 > %2 bytes").arg(trackLen).arg(TRACKBUF_LEN));
+//			debugWindow->append(QString("WRIT failed - request track len %1 > %2 bytes").arg(trackLen).arg(TRACKBUF_LEN));
 			cmdBuf.rcode = STAT_NOT_READY;
 		}
 		else {
-			debugWindow->append(QString("WRIT seeking to %1").arg(curTrack[driveNum] * trackLen));
-			driveFile[driveNum]->seek(curTrack[driveNum] * trackLen);
+			if (!(driveFile[driveNum]->seek(curTrack[driveNum] * trackLen))) {
+				displayError(QString("WRIT error seeking to %1").arg(curTrack[driveNum] * trackLen));
+			}
 		}
 
 		// Send WRIT response
 		cmdBuf.checksum = calcChecksum(cmdBuf.asBytes, COMMAND_LENGTH);
 
 		if (cmdBuf.rcode == STAT_OK) {
-			debugWindow->append(QString("WRIT command is OK"));
+//			debugWindow->append(QString("WRIT command is OK"));
 			serialPort->write((char *) cmdBuf.asBytes, CMDBUF_SIZE);
 
 			trkBufIdx = 0;
@@ -456,7 +502,7 @@ void FDCDialog::timerSlot()
 				trkBufIdx += serialPort->read((char *) &trackBuf[trkBufIdx], TRACKBUF_LEN_CRC-trkBufIdx);
 			} while (trkBufIdx < trackLen + 2 && bytesAvail);
 
-			debugWindow->append(QString("WRIT received %1 byte track").arg(trkBufIdx));
+//			debugWindow->append(QString("WRIT received %1 byte track").arg(trkBufIdx));
 
 			checksum = calcChecksum(trackBuf, trackLen);
 
@@ -465,12 +511,12 @@ void FDCDialog::timerSlot()
 				&& (((checksum >> 8) & 0xff)) == trackBuf[trackLen + 1]) {
 
 				if (driveFile[driveNum]->write((char *) trackBuf, trackLen) != trackLen) {
-					debugWindow->append(QString("WRIT write error"));
+					displayError("WRIT file write error");
 					cmdBuf.rcode = STAT_WRITE_ERR;
 				}
 			}
 			else {
-				debugWindow->append(QString("WRIT checksum error"));
+				displayError("WRIT checksum error");
 				cmdBuf.rcode = STAT_CHECKSUM_ERR;
 			}
 
@@ -487,15 +533,21 @@ void FDCDialog::timerSlot()
 
 	// STAT command
 	else if (QString(cmdBuf.command).left(4) == QString("STAT")) {
-		debugWindow->append(QString("STAT command"));
+		statCount++;
+
+		enableDrive(0xff);
+		enableHead(0xff);
 
 		driveNum = cmdBuf.param1 & 0x00ff;
-		debugWindow->append(QString("driveNum=%1").arg(driveNum));
 		if (driveNum < MAX_DRIVE) {
+			enableStatus[driveNum] = true;
 			headStatus[driveNum] = (cmdBuf.param1 & 0xff00) >> 8;
 			curTrack[driveNum] = cmdBuf.param2;
-			updateIndicators(driveNum);
 		}
+
+		updateIndicators();
+
+		dashboardLabel[DASHBOARD_STAT]->setText(QString("STAT %1 0x%2 0x%3 0x%4").arg(statCount,6,10,QChar('0')).arg(driveNum,2,16,QChar('0')).arg(cmdBuf.param1,4,16,QChar('0')).arg(cmdBuf.param2,4,16,QChar('0')));
 
 		// Respond with status of mounted drives
 		cmdBuf.rcode = STAT_OK;
@@ -510,7 +562,10 @@ void FDCDialog::timerSlot()
 
 		serialPort->write((char *) cmdBuf.asBytes, CMDBUF_SIZE);
 
-		debugWindow->append(QString("STAT response code=%1 data=%2").arg(cmdBuf.rcode,4,16).arg(cmdBuf.rdata,4,16));
+//		debugWindow->append(QString("STAT response code=%1 data=%2").arg(cmdBuf.rcode,4,16).arg(cmdBuf.rdata,4,16));
+	}
+	else {
+		displayError(QString("Received unknown command"));
 	}
 
 	timer->start();
@@ -519,7 +574,12 @@ void FDCDialog::timerSlot()
 void FDCDialog::updateSerialPort()
 {
 	if (serialPort->isOpen()) {
+		serialPort->clear();
 		serialPort->close();
+	}
+
+	if (serialPortBox->currentIndex() == -1) {
+		return;
 	}
 
 	if (serialPort->open(QIODevice::ReadWrite)) {
@@ -534,6 +594,7 @@ void FDCDialog::updateSerialPort()
 		serialPort->setFlowControl(QSerialPort::NoFlowControl);
 		serialPort->setDataTerminalReady(true);
 		serialPort->setRequestToSend(true);
+		serialPort->clear();
 	}
 	else {
 		QMessageBox::critical(this,
@@ -542,22 +603,20 @@ void FDCDialog::updateSerialPort()
 	}
 }
 
-void FDCDialog::updateIndicators(int drive)
+void FDCDialog::updateIndicators()
 {
-	int i;
+	int drive;
 
-	if (drive < MAX_DRIVE) {
-		for (i = 0; i < MAX_DRIVE; i++) {
-			enabledLabel[i]->setPixmap(*redLED);
-			headloadLabel[i]->setPixmap(*redLED);
+	for (drive = 0; drive < MAX_DRIVE; drive++) {
+		enabledLabel[drive]->setPixmap(*redLED);
+		headloadLabel[drive]->setPixmap(*redLED);
+
+		if (enableStatus[drive]) {
+			enabledLabel[drive]->setPixmap(*grnLED);
 		}
-
-		enabledLabel[drive]->setPixmap(*grnLED);
-
 		if (headStatus[drive]) {
 			headloadLabel[drive]->setPixmap(*grnLED);
 		}
-
 		if (maxTrack[drive] >= curTrack[drive]) {
 			trackProgress[drive]->setValue(curTrack[drive]);
 		}
@@ -576,6 +635,40 @@ quint16 FDCDialog::calcChecksum(const quint8 *data, int length)
 	}
 
 	return checksum;
+}
+
+void FDCDialog::enableDrive(quint8 driveNum)
+{
+	quint8 drive;
+
+	for (drive = 0; drive < MAX_DRIVE; drive++) {
+		enableStatus[drive] = false;
+	}
+
+	if (driveNum >= 0 && driveNum < MAX_DRIVE) {
+		enableStatus[driveNum] = true;
+	}
+}
+
+void FDCDialog::enableHead(quint8 driveNum)
+{
+	quint8 drive;
+
+	for (drive = 0; drive < MAX_DRIVE; drive++) {
+		headStatus[drive] = false;
+	}
+
+	if (driveNum >= 0 && driveNum < MAX_DRIVE) {
+		headStatus[driveNum] = true;
+	}
+}
+
+void FDCDialog::displayError(QString text)
+{
+	errCount++;
+	dashboardLabel[DASHBOARD_ERRC]->setText(QString("ERRC %1").arg(errCount,6,10,QChar('0')));
+	dashboardLabel[DASHBOARD_ERRT]->setText(text);
+	errTimeout = DASHBOARD_ERRTO;
 }
 
 int main(int argc, char **argv)

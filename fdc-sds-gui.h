@@ -11,7 +11,6 @@
 #include <QLineEdit>
 #include <QPushButton>
 #include <QComboBox>
-#include <QComboBox>
 #include <QPixmap>
 #include <QSerialPort>
 #include <QSerialPortInfo>
@@ -26,11 +25,13 @@
 #define STAT_NOT_READY		0x0001			// Not Ready
 #define STAT_CHECKSUM_ERR	0x0002			// Checksum Error
 #define STAT_WRITE_ERR		0x0003			// Write Error
-#define FORM_HEIGHT		575                     // used to keep form a fixed size
-#define FORM_WIDTH		512                     // used to keep form a fixed size
-#define FORM_WIDTH_DEBUG	727			// width when debug log enabled
-#define MAX_FILENAME		78			// max filename length before truncate
-#define FILENAME_CHUNK		36                      // chunk of filename to take when splitting
+#define DASHBOARD_ROWS		6			// Number of dashboard rows
+#define DASHBOARD_STAT		0
+#define DASHBOARD_READ		1
+#define	DASHBOARD_WRIT		2
+#define DASHBOARD_ERRC		3			// Error count
+#define	DASHBOARD_ERRT		5			// Error text
+#define DASHBOARD_ERRTO		1000			// Error text timeout 10ms ticks
 
 typedef struct TCOMMAND {
 	union {
@@ -93,10 +94,19 @@ private:
 	const QPixmap *grnLED;
 	const QPixmap *redLED;
 	QTextEdit *debugWindow;
+	QLabel *dashboardLabel[DASHBOARD_ROWS];
+	quint32 statCount;
+	quint32 readCount;
+	quint32 writCount;
+	quint32 errCount;
+	quint32 errTimeout;
 
-	void updateIndicators(int drive);
+	void enableDrive(quint8 driveNum);
+	void enableHead(quint8 driveNum);
+	void updateIndicators(void);
 	void updateSerialPort(void);
 	quint16 calcChecksum(const quint8 *data, int length);
+	void displayError(QString text);
 };
 
 #endif
