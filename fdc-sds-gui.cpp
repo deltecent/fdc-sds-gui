@@ -245,6 +245,12 @@ FDCDialog::FDCDialog(QWidget *parent)
 		dashboardLabel[row]->setFont(monoFont);
 		dashboardLayout->addWidget(dashboardLabel[row]);
 	}
+
+	dashboardLabel[DASHBOARD_STAT]->setText(QString("STAT").leftJustified(40));
+	dashboardLabel[DASHBOARD_READ]->setText(QString("READ").leftJustified(40));
+	dashboardLabel[DASHBOARD_WRIT]->setText(QString("WRIT").leftJustified(40));
+	dashboardLabel[DASHBOARD_ERR]->setText(QString("ERROR").leftJustified(40));
+
 	mainLayout->addLayout(dashboardLayout);
 
 	// Information Line
@@ -368,7 +374,7 @@ void FDCDialog::timerSlot()
 	// Clear last error text
 	if (errTimeout) {
 		if (--errTimeout == 0) {
-			dashboardLabel[DASHBOARD_ERRT]->setText("");
+			clearError();
 		}
 	}
 
@@ -384,8 +390,6 @@ void FDCDialog::timerSlot()
 	}
 
 	cmdBufIdx += bytesRead;
-
-//	debugWindow->append(QString("Received %1 bytes. Index %2.").arg(bytesRead).arg(cmdBufIdx));
 
 	if (cmdBufIdx < CMDBUF_SIZE) {
 		cmdBuf.asBytes[cmdBufIdx] = 0;
@@ -404,9 +408,15 @@ void FDCDialog::timerSlot()
 	// READ command
 	if (QString(cmdBuf.command).left(4) == QString("READ")) {
 		readCount++;
-		dashboardLabel[DASHBOARD_READ]->setText(QString("READ %1").arg(readCount,6,10,QChar('0')));
 
 		driveNum = cmdBuf.param1 >> 12;
+
+		displayDash(QString("%1").arg(readCount,6,10,QChar('0')), DASHBOARD_READ, 6, 6);
+		displayDash(QString("0x%1").arg(driveNum,2,10,QChar('0')), DASHBOARD_READ, 14, 4);
+		displayDash(QString("0x%1").arg(cmdBuf.param1 & 0x0fff,4,16,QChar('0')), DASHBOARD_READ, 20, 6);
+		displayDash(QString("0x%1").arg(cmdBuf.param2,4,16,QChar('0')), DASHBOARD_READ, 28, 6);
+
+		// Ignore invalid drive numbers
 		if (driveNum > MAX_DRIVE) {
 			return;
 		}
@@ -430,14 +440,20 @@ void FDCDialog::timerSlot()
 			return;
 		}
 
+		if (curTrack[driveNum] > maxTrack[driveNum]) {
+			displayError(QString("READ requested track %1 > %2").arg(curTrack[driveNum]).arg(maxTrack[driveNum]));
+			return;
+		}
+
 		updateIndicators();
 
-		if (!(driveFile[driveNum]->seek(curTrack[driveNum] * trackLen))) {
-			displayError(QString("READ error seeking to %1").arg(curTrack[driveNum] * trackLen));
+		driveFile[driveNum]->seek(curTrack[driveNum] * trackLen);
+		if (driveFile[driveNum]->pos() != curTrack[driveNum] * trackLen) {
+			displayError(QString("read() error seeking to %1").arg(curTrack[driveNum] * trackLen));
 		}
 
 		if ((bytesRead = driveFile[driveNum]->read((char *) trackBuf, trackLen)) != trackLen) {
-//			debugWindow->append(QString("READ failed - read %1 of %2 bytes").arg(bytesRead).arg(trackLen));
+			displayError(QString("read() failed - read %1 of %2 bytes").arg(bytesRead).arg(trackLen));
 			return;	// Ignore reads past end of file
 		}
 
@@ -446,16 +462,20 @@ void FDCDialog::timerSlot()
 		trackBuf[trackLen+1] = (checksum >> 8) & 0x00ff;	// MSB of checksum
 
 		serialPort->write((char *) trackBuf, trackLen + 2);
-
-//		debugWindow->append(QString("READ response %1 bytes + crc").arg(trackLen));
 	}
 
 	// WRIT command
 	else if (QString(cmdBuf.command).left(4) == QString("WRIT")) {
 		writCount++;
-		dashboardLabel[DASHBOARD_WRIT]->setText(QString("WRIT %1").arg(writCount,6,10,QChar('0')));
 
 		driveNum = cmdBuf.param1 >> 12;
+
+		displayDash(QString("%1").arg(writCount,6,10,QChar('0')), DASHBOARD_WRIT, 6, 6);
+		displayDash(QString("0x%1").arg(driveNum,2,10,QChar('0')), DASHBOARD_WRIT, 14, 4);
+		displayDash(QString("0x%1").arg(cmdBuf.param1 & 0x0fff,4,16,QChar('0')), DASHBOARD_WRIT, 20, 6);
+		displayDash(QString("0x%1").arg(cmdBuf.param2,4,16,QChar('0')), DASHBOARD_WRIT, 28, 6);
+
+		// Ignore invalid drive numbers
 		if (driveNum > MAX_DRIVE) {
 			return;
 		}
@@ -465,8 +485,6 @@ void FDCDialog::timerSlot()
 
 		enableDrive(driveNum);
 		enableHead(driveNum);
-
-//		debugWindow->append(QString("WRIT driveNum=%1 track=%2 tracklen=%3").arg(driveNum).arg(curTrack[driveNum]).arg(trackLen));
 
 		// If drive not mounted, ignore
 		if (!driveFile[driveNum]->isOpen()) {
@@ -479,20 +497,19 @@ void FDCDialog::timerSlot()
 
 		// If the requested track length is too long, ignore
 		if (trackLen > TRACKBUF_LEN) {
-//			debugWindow->append(QString("WRIT failed - request track len %1 > %2 bytes").arg(trackLen).arg(TRACKBUF_LEN));
+			displayError(QString("WRIT requested track len %1 > %2 bytes").arg(trackLen).arg(TRACKBUF_LEN));
 			cmdBuf.rcode = STAT_NOT_READY;
 		}
-		else {
-			if (!(driveFile[driveNum]->seek(curTrack[driveNum] * trackLen))) {
-				displayError(QString("WRIT error seeking to %1").arg(curTrack[driveNum] * trackLen));
-			}
+
+		if (curTrack[driveNum] > maxTrack[driveNum]) {
+			displayError(QString("WRIT requested track %1 > %2").arg(curTrack[driveNum]).arg(maxTrack[driveNum]));
+			return;
 		}
 
 		// Send WRIT response
 		cmdBuf.checksum = calcChecksum(cmdBuf.asBytes, COMMAND_LENGTH);
 
 		if (cmdBuf.rcode == STAT_OK) {
-//			debugWindow->append(QString("WRIT command is OK"));
 			serialPort->write((char *) cmdBuf.asBytes, CMDBUF_SIZE);
 
 			trkBufIdx = 0;
@@ -502,15 +519,17 @@ void FDCDialog::timerSlot()
 				trkBufIdx += serialPort->read((char *) &trackBuf[trkBufIdx], TRACKBUF_LEN_CRC-trkBufIdx);
 			} while (trkBufIdx < trackLen + 2 && bytesAvail);
 
-//			debugWindow->append(QString("WRIT received %1 byte track").arg(trkBufIdx));
-
 			checksum = calcChecksum(trackBuf, trackLen);
 
 			if ((trkBufIdx = trackLen+2)
 				&& ((checksum & 0xff) == trackBuf[trackLen])
 				&& (((checksum >> 8) & 0xff)) == trackBuf[trackLen + 1]) {
 
-				if (driveFile[driveNum]->write((char *) trackBuf, trackLen) != trackLen) {
+				if (!(driveFile[driveNum]->seek(curTrack[driveNum] * trackLen))) {
+					displayError(QString("WRIT error seeking to %1").arg(curTrack[driveNum] * trackLen));
+					cmdBuf.rcode = STAT_WRITE_ERR;
+				}
+				else if (driveFile[driveNum]->write((char *) trackBuf, trackLen) != trackLen) {
 					displayError("WRIT file write error");
 					cmdBuf.rcode = STAT_WRITE_ERR;
 				}
@@ -547,7 +566,10 @@ void FDCDialog::timerSlot()
 
 		updateIndicators();
 
-		dashboardLabel[DASHBOARD_STAT]->setText(QString("STAT %1 0x%2 0x%3 0x%4").arg(statCount,6,10,QChar('0')).arg(driveNum,2,16,QChar('0')).arg(cmdBuf.param1,4,16,QChar('0')).arg(cmdBuf.param2,4,16,QChar('0')));
+		displayDash(QString("%1").arg(statCount,6,10,QChar('0')), DASHBOARD_STAT, 6, 6);
+		displayDash(QString("0x%1").arg(driveNum,2,10,QChar('0')), DASHBOARD_STAT, 14, 4);
+		displayDash(QString("0x%1").arg(cmdBuf.param1,4,16,QChar('0')), DASHBOARD_STAT, 20, 6);
+		displayDash(QString("0x%1").arg(cmdBuf.param2,4,16,QChar('0')), DASHBOARD_STAT, 28, 6);
 
 		// Respond with status of mounted drives
 		cmdBuf.rcode = STAT_OK;
@@ -561,8 +583,6 @@ void FDCDialog::timerSlot()
 		cmdBuf.checksum = calcChecksum(cmdBuf.asBytes, COMMAND_LENGTH);
 
 		serialPort->write((char *) cmdBuf.asBytes, CMDBUF_SIZE);
-
-//		debugWindow->append(QString("STAT response code=%1 data=%2").arg(cmdBuf.rcode,4,16).arg(cmdBuf.rdata,4,16));
 	}
 	else {
 		displayError(QString("Received unknown command"));
@@ -600,6 +620,8 @@ void FDCDialog::updateSerialPort()
 		QMessageBox::critical(this,
 			"Serial Port Error",
 			QString("Could not open serial port '%1' (%2)").arg(serialPort->portName()).arg(serialPort->error()));
+
+		serialPortBox->setCurrentIndex(-1);
 	}
 }
 
@@ -663,11 +685,22 @@ void FDCDialog::enableHead(quint8 driveNum)
 	}
 }
 
+void FDCDialog::displayDash(QString text, int row, int pos, int len)
+{
+	dashboardLabel[row]->setText(dashboardLabel[row]->text().replace(pos, len, text));
+}
+
 void FDCDialog::displayError(QString text)
 {
 	errCount++;
-	dashboardLabel[DASHBOARD_ERRC]->setText(QString("ERRC %1").arg(errCount,6,10,QChar('0')));
-	dashboardLabel[DASHBOARD_ERRT]->setText(text);
+	displayDash(QString("%1").arg(errCount,6,10,QChar('0')), DASHBOARD_ERR, 6, 6);
+	displayDash(text.leftJustified(40), DASHBOARD_ERR, 14, 40);
+	errTimeout = DASHBOARD_ERRTO;
+}
+
+void FDCDialog::clearError()
+{
+	displayDash(QString("").leftJustified(40), DASHBOARD_ERR, 14, 40);
 	errTimeout = DASHBOARD_ERRTO;
 }
 

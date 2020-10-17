@@ -21,16 +21,17 @@
 #define COMMAND_LENGTH		8                       // does not include checksum bytes
 #define TRACKBUF_LEN		137*32                  // maximum valid track length
 #define TRACKBUF_LEN_CRC	(TRACKBUF_LEN+2)        // maximum valid track length with CRC
+
 #define STAT_OK			0x0000			// OK
 #define STAT_NOT_READY		0x0001			// Not Ready
 #define STAT_CHECKSUM_ERR	0x0002			// Checksum Error
 #define STAT_WRITE_ERR		0x0003			// Write Error
-#define DASHBOARD_ROWS		6			// Number of dashboard rows
+
+#define DASHBOARD_ROWS		4			// Number of dashboard rows
 #define DASHBOARD_STAT		0
 #define DASHBOARD_READ		1
 #define	DASHBOARD_WRIT		2
-#define DASHBOARD_ERRC		3			// Error count
-#define	DASHBOARD_ERRT		5			// Error text
+#define DASHBOARD_ERR		3			// Error row
 #define DASHBOARD_ERRTO		1000			// Error text timeout 10ms ticks
 
 typedef struct TCOMMAND {
@@ -106,7 +107,9 @@ private:
 	void updateIndicators(void);
 	void updateSerialPort(void);
 	quint16 calcChecksum(const quint8 *data, int length);
+	void displayDash(QString text, int row, int pos, int len);
 	void displayError(QString text);
+	void clearError();
 };
 
 #endif
