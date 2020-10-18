@@ -246,10 +246,10 @@ FDCDialog::FDCDialog(QWidget *parent)
 		dashboardLayout->addWidget(dashboardLabel[row]);
 	}
 
-	dashboardLabel[DASHBOARD_STAT]->setText(QString("STAT").leftJustified(40));
-	dashboardLabel[DASHBOARD_READ]->setText(QString("READ").leftJustified(40));
-	dashboardLabel[DASHBOARD_WRIT]->setText(QString("WRIT").leftJustified(40));
-	dashboardLabel[DASHBOARD_ERR]->setText(QString("ERROR").leftJustified(40));
+	dashboardLabel[DASHBOARD_STAT]->setText(QString("STAT").leftJustified(60));
+	dashboardLabel[DASHBOARD_READ]->setText(QString("READ").leftJustified(60));
+	dashboardLabel[DASHBOARD_WRIT]->setText(QString("WRIT").leftJustified(60));
+	dashboardLabel[DASHBOARD_ERR]->setText(QString("ERROR").leftJustified(60));
 
 	mainLayout->addLayout(dashboardLayout);
 
@@ -382,6 +382,8 @@ void FDCDialog::timerSlot()
 		return;
 	}
 
+	bytesAvail = serialPort->bytesAvailable();
+	displayDash(QString("%1").arg(bytesAvail,4,10,QChar('0')).left(4), DASHBOARD_STAT, 36, 4);
 	bytesRead = serialPort->read((char *) &cmdBuf.asBytes[cmdBufIdx], CMDBUF_SIZE-cmdBufIdx);
 
 	if (bytesRead == 0) {
@@ -412,7 +414,7 @@ void FDCDialog::timerSlot()
 		driveNum = cmdBuf.param1 >> 12;
 
 		displayDash(QString("%1").arg(readCount,6,10,QChar('0')), DASHBOARD_READ, 6, 6);
-		displayDash(QString("0x%1").arg(driveNum,2,10,QChar('0')), DASHBOARD_READ, 14, 4);
+		displayDash(QString("0x%1").arg(driveNum,2,16,QChar('0')), DASHBOARD_READ, 14, 4);
 		displayDash(QString("0x%1").arg(cmdBuf.param1 & 0x0fff,4,16,QChar('0')), DASHBOARD_READ, 20, 6);
 		displayDash(QString("0x%1").arg(cmdBuf.param2,4,16,QChar('0')), DASHBOARD_READ, 28, 6);
 
@@ -471,7 +473,7 @@ void FDCDialog::timerSlot()
 		driveNum = cmdBuf.param1 >> 12;
 
 		displayDash(QString("%1").arg(writCount,6,10,QChar('0')), DASHBOARD_WRIT, 6, 6);
-		displayDash(QString("0x%1").arg(driveNum,2,10,QChar('0')), DASHBOARD_WRIT, 14, 4);
+		displayDash(QString("0x%1").arg(driveNum,2,16,QChar('0')), DASHBOARD_WRIT, 14, 4);
 		displayDash(QString("0x%1").arg(cmdBuf.param1 & 0x0fff,4,16,QChar('0')), DASHBOARD_WRIT, 20, 6);
 		displayDash(QString("0x%1").arg(cmdBuf.param2,4,16,QChar('0')), DASHBOARD_WRIT, 28, 6);
 
@@ -567,7 +569,7 @@ void FDCDialog::timerSlot()
 		updateIndicators();
 
 		displayDash(QString("%1").arg(statCount,6,10,QChar('0')), DASHBOARD_STAT, 6, 6);
-		displayDash(QString("0x%1").arg(driveNum,2,10,QChar('0')), DASHBOARD_STAT, 14, 4);
+		displayDash(QString("0x%1").arg(driveNum,2,16,QChar('0')), DASHBOARD_STAT, 14, 4);
 		displayDash(QString("0x%1").arg(cmdBuf.param1,4,16,QChar('0')), DASHBOARD_STAT, 20, 6);
 		displayDash(QString("0x%1").arg(cmdBuf.param2,4,16,QChar('0')), DASHBOARD_STAT, 28, 6);
 
