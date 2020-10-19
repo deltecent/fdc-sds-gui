@@ -206,7 +206,7 @@ FDCDialog::FDCDialog(QWidget *parent)
 	}
 
 	// Information
-	label = new QLabel(tr("FDC+ Serial Drive Server v1.0"));
+	label = new QLabel(tr("FDC+ Serial Drive Server v1.0 BETA"));
 	infoLayout->addWidget(label);
 	label = new QLabel(tr("(c)2020 Deltec Enterprises"));
 	label->setAlignment(Qt::AlignRight);  
