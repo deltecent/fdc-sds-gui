@@ -209,6 +209,7 @@ FDCDialog::FDCDialog(QWidget *parent)
 	label = new QLabel(tr("FDC+ Serial Drive Server v1.0"));
 	infoLayout->addWidget(label);
 	label = new QLabel(tr("(c)2020 Deltec Enterprises"));
+	label->setAlignment(Qt::AlignRight);  
 	infoLayout->addWidget(label);
 
 	// Communications Ports
@@ -217,7 +218,7 @@ FDCDialog::FDCDialog(QWidget *parent)
 	for (const QSerialPortInfo &info : serialPorts) {
 		serialPortBox->addItem(info.portName());
 	}
-	serialPortBox->setPlaceholderText(tr("None"));
+//	serialPortBox->setPlaceholderText(tr("None"));
 	serialPortBox->setCurrentIndex(-1);
 	connect(serialPortBox, QOverload<int>::of(&QComboBox::currentIndexChanged), [this](int index){ serialPortSlot(index); });
 
@@ -669,7 +670,7 @@ void FDCDialog::enableDrive(quint8 driveNum)
 		enableStatus[drive] = false;
 	}
 
-	if (driveNum >= 0 && driveNum < MAX_DRIVE) {
+	if (driveNum < MAX_DRIVE) {
 		enableStatus[driveNum] = true;
 	}
 }
@@ -682,7 +683,7 @@ void FDCDialog::enableHead(quint8 driveNum)
 		headStatus[drive] = false;
 	}
 
-	if (driveNum >= 0 && driveNum < MAX_DRIVE) {
+	if (driveNum < MAX_DRIVE) {
 		headStatus[driveNum] = true;
 	}
 }
