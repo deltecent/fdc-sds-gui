@@ -396,7 +396,7 @@ void FDCDialog::timerSlot()
 	bytesRead = readSerialPort(cmdBuf.asBytes, CMDBUF_SIZE, 10);
 
 	if (bytesRead < CMDBUF_SIZE) {
-		displayError(QString("received partial command buffer"));
+		displayError(QString("received partial command buffer %1/10 bytes").arg(bytesRead));
 		return;
 	}
 
