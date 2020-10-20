@@ -247,10 +247,10 @@ FDCDialog::FDCDialog(QWidget *parent)
 		dashboardLayout->addWidget(dashboardLabel[row]);
 	}
 
-	dashboardLabel[DASHBOARD_STAT]->setText(QString("STAT").leftJustified(60));
-	dashboardLabel[DASHBOARD_READ]->setText(QString("READ").leftJustified(60));
-	dashboardLabel[DASHBOARD_WRIT]->setText(QString("WRIT").leftJustified(60));
-	dashboardLabel[DASHBOARD_ERR]->setText(QString("ERROR").leftJustified(60));
+	dashboardLabel[DASHBOARD_STAT]->setText(QString("STAT").leftJustified(80));
+	dashboardLabel[DASHBOARD_READ]->setText(QString("READ").leftJustified(80));
+	dashboardLabel[DASHBOARD_WRIT]->setText(QString("WRIT").leftJustified(80));
+	dashboardLabel[DASHBOARD_ERR]->setText(QString("ERROR").leftJustified(80));
 
 	mainLayout->addLayout(dashboardLayout);
 
@@ -759,13 +759,13 @@ void FDCDialog::displayError(QString text)
 {
 	errCount++;
 	displayDash(QString("%1").arg(errCount,6,10,QChar('0')), DASHBOARD_ERR, 6, 6);
-	displayDash(text.leftJustified(40), DASHBOARD_ERR, 14, 40);
+	displayDash(text.leftJustified(74), DASHBOARD_ERR, 14, 74);
 	errTimeout = DASHBOARD_ERRTO;
 }
 
 void FDCDialog::clearError()
 {
-	displayDash(QString("").leftJustified(40), DASHBOARD_ERR, 14, 40);
+	displayDash(QString("").leftJustified(74), DASHBOARD_ERR, 14, 74);
 	errTimeout = DASHBOARD_ERRTO;
 }
 
