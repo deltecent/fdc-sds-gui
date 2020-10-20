@@ -262,7 +262,6 @@ FDCDialog::FDCDialog(QWidget *parent)
 	// Serial Port Object
 	serialPort = new QSerialPort;
 	baudRate = baudRateBox->currentData().toInt();
-	cmdBufIdx = 0;
 
 	// Start timer
 	timer = new QTimer(this);
@@ -374,9 +373,9 @@ void FDCDialog::timerSlot()
 	qint64 bytesRead;
 	quint16 checksum;
 
-	tickCount++;
 
 	// Reset timer
+	tickCount++;
 	timer->start();
 
 	// Clear last error text
@@ -390,25 +389,16 @@ void FDCDialog::timerSlot()
 		return;
 	}
 
-	bytesRead = readSerialPort(&cmdBuf.asBytes[cmdBufIdx], CMDBUF_SIZE-cmdBufIdx, 10);
-
-	if (bytesRead <= 0) {
-		if (cmdBufIdx) {
-			displayError(QString("no bytes... reset command buffer"));
-			cmdBufIdx = 0;
-		}
-
+	if (!serialPort->bytesAvailable()) {
 		return;
 	}
 
-	cmdBufIdx += bytesRead;
+	bytesRead = readSerialPort(cmdBuf.asBytes, CMDBUF_SIZE, 10);
 
-	if (cmdBufIdx < CMDBUF_SIZE) {
+	if (bytesRead < CMDBUF_SIZE) {
 		displayError(QString("received partial command buffer"));
 		return;
 	}
-
-	cmdBufIdx = 0;
 
 	// Calculate and validate checksum
 	checksum = calcChecksum(cmdBuf.asBytes, CMD_LEN);
@@ -664,7 +654,7 @@ int FDCDialog::readSerialPort(const quint8 *buffer, int len, qint64 msec)
 	timeout.start();
 
 	do {
-		serialPort->waitForReadyRead(msec);	// Get more characters
+		serialPort->waitForReadyRead(0);	// Get more characters
 		i += serialPort->read((char *) buffer+i, len-i);
 	} while (i != -1 && i < len && !timeout.hasExpired(msec));
 

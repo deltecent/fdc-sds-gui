@@ -78,7 +78,6 @@ private:
 	QList<QSerialPortInfo> serialPorts;
 	QSerialPort *serialPort;
 	quint32 baudRate;
-	quint16 cmdBufIdx;
 	tcommand_t cmdBuf;
 	quint16 trkBufIdx;
 	quint8 trkBuf[TRKBUF_SIZE + CRC_LEN];
