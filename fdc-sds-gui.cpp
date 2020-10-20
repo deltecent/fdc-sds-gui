@@ -168,6 +168,7 @@ FDCDialog::FDCDialog(QWidget *parent)
 		unloadButton[driveNum]->setEnabled(false);
 
 		enabledLayout[driveNum] = new QHBoxLayout;
+		enabledLayout[driveNum]->setAlignment(Qt::AlignRight);  
 		label = new QLabel(tr("Enabled"));
 		enabledLabel[driveNum] = new QLabel;
 		enabledLabel[driveNum]->setPixmap(*redLED);
@@ -175,6 +176,7 @@ FDCDialog::FDCDialog(QWidget *parent)
 		enabledLayout[driveNum]->addWidget(enabledLabel[driveNum]);
 
 		headloadLayout[driveNum] = new QHBoxLayout;
+		headloadLayout[driveNum]->setAlignment(Qt::AlignRight);  
 		label = new QLabel(tr("Head Load"));
 		headloadLabel[driveNum] = new QLabel;
 		headloadLabel[driveNum]->setPixmap(*redLED);
@@ -264,9 +266,9 @@ FDCDialog::FDCDialog(QWidget *parent)
 
 	// Start timer
 	timer = new QTimer(this);
-	timer->setInterval(10);		// 10ms
+	timer->setTimerType(Qt::PreciseTimer);
 	connect(timer, &QTimer::timeout, this, &FDCDialog::timerSlot);
-	timer->start();
+	timer->start(10);	// 10ms timer
 
 	// Counters
 	tickCount = 0;
@@ -286,6 +288,12 @@ FDCDialog::FDCDialog(QWidget *parent)
 #ifdef Q_OS_MAC
 	savePath = savePath + "../../../";
 #endif
+
+	// create debug window
+	dbgWindow = new DbgWidget();
+	dbgWindow->setGeometry(0, 0, 600, 400);
+	dbgWindow->setWindowTitle(tr("FDC+ Serial Drive Server Debug Output"));
+	dbgWindow->show();
 }
 
 void FDCDialog::serialPortSlot(int index)
@@ -375,7 +383,6 @@ void FDCDialog::timerSlot()
 
 	// Reset timer
 	tickCount++;
-	timer->start();
 
 	// Clear last error text
 	if (errTimeout) {
@@ -392,10 +399,11 @@ void FDCDialog::timerSlot()
 		return;
 	}
 
-	bytesRead = readSerialPort(cmdBuf.asBytes, CMDBUF_SIZE, 10);
+	bytesRead = readSerialPort(cmdBuf.asBytes, CMDBUF_SIZE, 50);
 
 	if (bytesRead < CMDBUF_SIZE) {
 		displayError(QString("received partial command buffer %1/10 bytes").arg(bytesRead));
+		dbgWindow->hexDump(cmdBuf.asBytes, bytesRead);
 		return;
 	}
 
@@ -771,7 +779,27 @@ void FDCDialog::reject()
 		}
 	}
 
+	// Close debug window
+	dbgWindow->close();
+
 	QDialog::reject();
+}
+
+DbgWidget::DbgWidget(QWidget *parent)
+        : QTextEdit(parent)
+{
+}
+
+void DbgWidget::hexDump(const quint8 *buffer, int len)
+{
+	QString line;
+
+	while (len--) {
+		line += QString().asprintf("'%c' %02x ", (QChar::isPrint(*buffer)) ? *buffer : '.', *buffer);
+		buffer++;
+	}
+
+	append(line);
 }
 
 int main(int argc, char **argv)

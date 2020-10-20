@@ -52,6 +52,16 @@ typedef struct TCOMMAND {
 	};
 } tcommand_t;
 
+
+class DbgWidget : public QTextEdit
+{
+	Q_OBJECT
+
+public:
+	DbgWidget(QWidget *parent = nullptr);
+	void hexDump(const quint8 *buffer, int len);
+};
+
 class FDCDialog : public QDialog
 {
 	Q_OBJECT
@@ -103,6 +113,7 @@ private:
 	quint32 rbyteCount;
 	quint32 wbyteCount;
 	quint32 errTimeout;
+	DbgWidget *dbgWindow;
 
 	void enableDrive(quint8 driveNum);
 	void enableHead(quint8 driveNum);
@@ -116,6 +127,5 @@ private:
 	void clearError(void);
 	void reject(void);
 };
-
 #endif
 
