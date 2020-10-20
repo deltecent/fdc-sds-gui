@@ -653,7 +653,7 @@ int FDCDialog::readSerialPort(const quint8 *buffer, int len, qint64 msec)
 	timeout.start();
 
 	do {
-		serialPort->waitForReadyRead(0);	// Get more characters
+		serialPort->waitForReadyRead(10);	// Get more characters
 		i += serialPort->read((char *) buffer+i, len-i);
 	} while (i != -1 && i < len && !timeout.hasExpired(msec));
 
