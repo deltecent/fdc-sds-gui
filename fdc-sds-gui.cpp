@@ -218,7 +218,6 @@ FDCDialog::FDCDialog(QWidget *parent)
 	for (const QSerialPortInfo &info : serialPorts) {
 		serialPortBox->addItem(info.portName());
 	}
-//	serialPortBox->setPlaceholderText(tr("None"));
 	serialPortBox->setCurrentIndex(-1);
 	connect(serialPortBox, QOverload<int>::of(&QComboBox::currentIndexChanged), [this](int index){ serialPortSlot(index); });
 
@@ -476,7 +475,6 @@ void FDCDialog::timerSlot()
 		displayDash(QString("0x%1").arg(driveNum,2,16,QChar('0')), DASHBOARD_WRIT, 14, 4);
 		displayDash(QString("0x%1").arg(cmdBuf.param1 & 0x0fff,4,16,QChar('0')), DASHBOARD_WRIT, 20, 6);
 		displayDash(QString("0x%1").arg(cmdBuf.param2,4,16,QChar('0')), DASHBOARD_WRIT, 28, 6);
-		displayDash(QString("%1").arg("0000"), DASHBOARD_WRIT, 36, 4);
 
 		// Ignore invalid drive numbers
 		if (driveNum > MAX_DRIVE) {
@@ -515,18 +513,7 @@ void FDCDialog::timerSlot()
 		if (cmdBuf.rcode == STAT_OK) {
 			writeSerialPort(cmdBuf.asBytes, CMDBUF_SIZE);
 
-#if 0
-			QDeadlineTimer deadline(500);
-			trkBufIdx = 0;
-
-			do {
-				serialPort->waitForReadyRead(1);
-				trkBufIdx += serialPort->read((char *) &trkBuf[trkBufIdx], TRKBUF_SIZE+CRC_LEN-trkBufIdx);
-				displayDash(QString("%1").arg(trkBufIdx,4,10,QChar('0')).left(4), DASHBOARD_WRIT, 36, 4);
-			} while (trkBufIdx < trackLen + CRC_LEN && !(deadline.hasExpired()));
-#else
 			int bytesRead = readSerialPort(trkBuf, trackLen + CRC_LEN, 250);	// Length of track plus 2 byte CRC
-#endif
 
 			checksum = calcChecksum(trkBuf, trackLen);
 
@@ -595,14 +582,11 @@ void FDCDialog::timerSlot()
 
 		cmdBuf.checksum = calcChecksum(cmdBuf.asBytes, CMD_LEN);
 
-//		serialPort->write((char *) cmdBuf.asBytes, CMDBUF_SIZE);
 		writeSerialPort(cmdBuf.asBytes, CMDBUF_SIZE);
 	}
 	else {
 		displayError(QString("Received unknown command"));
 	}
-
-//	displayDash(QString("%1").arg(writCount,6,10,QChar('0')), DASHBOARD_WRIT, 6, 6);
 }
 
 void FDCDialog::updateSerialPort()
@@ -659,7 +643,6 @@ int FDCDialog::readSerialPort(const quint8 *buffer, int len, qint64 msec)
 	} while (i != -1 && i < len && !timeout.hasExpired(msec));
 
 	rbyteCount += i;
-//	displayDash(QString("%1").arg(rbyteCount,6,10,QChar('0')).left(6), DASHBOARD_STAT, 36, 6);
 
 	return i;
 }
@@ -679,7 +662,6 @@ int FDCDialog::writeSerialPort(const quint8 *buffer, int len, qint64 msec)
 	serialPort->write((char *) buffer, len);
 
 	wbyteCount += len;
-//	displayDash(QString("%1").arg(wbyteCount,6,10,QChar('0')).left(6), DASHBOARD_STAT, 44, 6);
 
 	QElapsedTimer timeout;
 	timeout.start();
