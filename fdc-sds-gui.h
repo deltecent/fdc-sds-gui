@@ -17,10 +17,10 @@
 #include <QList>
 
 #define MAX_DRIVE		4
-#define CMDBUF_SIZE		10
-#define COMMAND_LENGTH		8                       // does not include checksum bytes
-#define TRACKBUF_LEN		137*32                  // maximum valid track length
-#define TRACKBUF_LEN_CRC	(TRACKBUF_LEN+2)        // maximum valid track length with CRC
+#define CMD_LEN			8                       // does not include checksum bytes
+#define CRC_LEN			2			// length of CRC
+#define CMDBUF_SIZE		CMD_LEN+CRC_LEN
+#define TRKBUF_SIZE		137*32                  // maximum valid track length
 
 #define STAT_OK			0x0000			// OK
 #define STAT_NOT_READY		0x0001			// Not Ready
@@ -81,7 +81,7 @@ private:
 	quint16 cmdBufIdx;
 	tcommand_t cmdBuf;
 	quint16 trkBufIdx;
-	quint8 trackBuf[TRACKBUF_LEN_CRC];
+	quint8 trkBuf[TRKBUF_SIZE + CRC_LEN];
 	quint8 driveSize[MAX_DRIVE];
 	quint16 maxTrack[MAX_DRIVE];
 	quint16 curTrack[MAX_DRIVE];
@@ -96,17 +96,21 @@ private:
 	const QPixmap *redLED;
 	QTextEdit *debugWindow;
 	QLabel *dashboardLabel[DASHBOARD_ROWS];
+	quint32 tickCount;
 	quint32 statCount;
 	quint32 readCount;
 	quint32 writCount;
 	quint32 errCount;
+	quint32 rbyteCount;
+	quint32 wbyteCount;
 	quint32 errTimeout;
 
 	void enableDrive(quint8 driveNum);
 	void enableHead(quint8 driveNum);
 	void updateIndicators(void);
 	void updateSerialPort(void);
-	void writeSerialPort(const quint8 *buffer, int len);
+	int readSerialPort(const quint8 *buffer, int len, qint64 msec=1000);
+	int writeSerialPort(const quint8 *buffer, int len, qint64 msec=1000);
 	quint16 calcChecksum(const quint8 *data, int length);
 	void displayDash(QString text, int row, int pos, int len);
 	void displayError(QString text);

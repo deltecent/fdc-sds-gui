@@ -271,10 +271,13 @@ FDCDialog::FDCDialog(QWidget *parent)
 	timer->start();
 
 	// Counters
+	tickCount = 0;
 	statCount = 0;
 	readCount = 0;
 	writCount = 0;
 	errCount = 0;
+	rbyteCount = 0;
+	wbyteCount = 0;
 
 	savePath = QCoreApplication::applicationDirPath();
 
@@ -369,8 +372,12 @@ void FDCDialog::timerSlot()
 	quint16 driveNum;
 	quint16 trackLen;
 	qint64 bytesRead;
-	qint64 bytesAvail;
 	quint16 checksum;
+
+	tickCount++;
+
+	// Reset timer
+	timer->start();
 
 	// Clear last error text
 	if (errTimeout) {
@@ -383,30 +390,31 @@ void FDCDialog::timerSlot()
 		return;
 	}
 
-	bytesAvail = serialPort->bytesAvailable();
-	displayDash(QString("%1").arg(bytesAvail,4,10,QChar('0')).left(4), DASHBOARD_STAT, 36, 4);
-	bytesRead = serialPort->read((char *) &cmdBuf.asBytes[cmdBufIdx], CMDBUF_SIZE-cmdBufIdx);
+	bytesRead = readSerialPort(&cmdBuf.asBytes[cmdBufIdx], CMDBUF_SIZE-cmdBufIdx, 10);
 
 	if (bytesRead <= 0) {
-		cmdBuf.asBytes[0] = ' ';
-		cmdBufIdx = 0;
+		if (cmdBufIdx) {
+			displayError(QString("no bytes... reset command buffer"));
+			cmdBufIdx = 0;
+		}
+
 		return;
 	}
 
 	cmdBufIdx += bytesRead;
 
 	if (cmdBufIdx < CMDBUF_SIZE) {
-		cmdBuf.asBytes[cmdBufIdx] = 0;
+		displayError(QString("received partial command buffer"));
 		return;
 	}
 
 	cmdBufIdx = 0;
 
 	// Calculate and validate checksum
-	checksum = calcChecksum(cmdBuf.asBytes, COMMAND_LENGTH);
+	checksum = calcChecksum(cmdBuf.asBytes, CMD_LEN);
 
 	if (checksum != cmdBuf.checksum) {
-//		displayError(QString("CRC ERROR calc=%1 recv=%2").arg(checksum,4,16).arg(cmdBuf.checksum,4,16));
+		displayError(QString("CRC ERROR calc=%1 recv=%2").arg(checksum,4,16).arg(cmdBuf.checksum,4,16));
 	}
 
 	// READ command
@@ -439,8 +447,8 @@ void FDCDialog::timerSlot()
 		trackLen = cmdBuf.param2;
 
 		// If the requested track length is too long, ignore
-		if (trackLen > TRACKBUF_LEN) {
-			displayError(QString("READ requested track len %1 > %2 bytes").arg(trackLen).arg(TRACKBUF_LEN));
+		if (trackLen > TRKBUF_SIZE) {
+			displayError(QString("READ requested track len %1 > %2 bytes").arg(trackLen).arg(TRKBUF_SIZE));
 			return;
 		}
 
@@ -456,16 +464,16 @@ void FDCDialog::timerSlot()
 			displayError(QString("read() error seeking to %1").arg(curTrack[driveNum] * trackLen));
 		}
 
-		if ((bytesRead = driveFile[driveNum]->read((char *) trackBuf, trackLen)) != trackLen) {
+		if ((bytesRead = driveFile[driveNum]->read((char *) trkBuf, trackLen)) != trackLen) {
 			displayError(QString("read() failed - read %1 of %2 bytes").arg(bytesRead).arg(trackLen));
 			return;	// Ignore reads past end of file
 		}
 
-		checksum = calcChecksum(trackBuf, trackLen);
-		trackBuf[trackLen] = checksum & 0x00ff;			// LSB of checksum
-		trackBuf[trackLen+1] = (checksum >> 8) & 0x00ff;	// MSB of checksum
+		checksum = calcChecksum(trkBuf, trackLen);
+		trkBuf[trackLen] = checksum & 0x00ff;			// LSB of checksum
+		trkBuf[trackLen+1] = (checksum >> 8) & 0x00ff;	// MSB of checksum
 
-		writeSerialPort(trackBuf, trackLen + 2);
+		writeSerialPort(trkBuf, trackLen + CRC_LEN);
 	}
 
 	// WRIT command
@@ -501,8 +509,8 @@ void FDCDialog::timerSlot()
 		}
 
 		// If the requested track length is too long, ignore
-		if (trackLen > TRACKBUF_LEN) {
-			displayError(QString("WRIT requested track len %1 > %2 bytes").arg(trackLen).arg(TRACKBUF_LEN));
+		if (trackLen > TRKBUF_SIZE) {
+			displayError(QString("WRIT requested track len %1 > %2 bytes").arg(trackLen).arg(TRKBUF_SIZE));
 			cmdBuf.rcode = STAT_NOT_READY;
 		}
 
@@ -512,34 +520,38 @@ void FDCDialog::timerSlot()
 		}
 
 		// Send WRIT response
-		cmdBuf.checksum = calcChecksum(cmdBuf.asBytes, COMMAND_LENGTH);
+		cmdBuf.checksum = calcChecksum(cmdBuf.asBytes, CMD_LEN);
 
 		if (cmdBuf.rcode == STAT_OK) {
 			writeSerialPort(cmdBuf.asBytes, CMDBUF_SIZE);
 
+#if 0
 			QDeadlineTimer deadline(500);
 			trkBufIdx = 0;
 
 			do {
 				serialPort->waitForReadyRead(1);
-				trkBufIdx += serialPort->read((char *) &trackBuf[trkBufIdx], TRACKBUF_LEN_CRC-trkBufIdx);
+				trkBufIdx += serialPort->read((char *) &trkBuf[trkBufIdx], TRKBUF_SIZE+CRC_LEN-trkBufIdx);
 				displayDash(QString("%1").arg(trkBufIdx,4,10,QChar('0')).left(4), DASHBOARD_WRIT, 36, 4);
-			} while (trkBufIdx < trackLen + 2 && !(deadline.hasExpired()));
+			} while (trkBufIdx < trackLen + CRC_LEN && !(deadline.hasExpired()));
+#else
+			int bytesRead = readSerialPort(trkBuf, trackLen + CRC_LEN, 250);	// Length of track plus 2 byte CRC
+#endif
 
-			checksum = calcChecksum(trackBuf, trackLen);
+			checksum = calcChecksum(trkBuf, trackLen);
 
-			if (trkBufIdx != trackLen + 2) {
-				displayError(QString("WRIT track length (%1) error").arg(trkBufIdx));
+			if (bytesRead != trackLen + CRC_LEN) {
+				displayError(QString("WRIT received wrong track length (%1/%2)").arg(bytesRead).arg(trackLen + CRC_LEN));
 				cmdBuf.rcode = STAT_CHECKSUM_ERR;
 			}
-			else if (((checksum & 0xff) == trackBuf[trackLen])
-				&& (((checksum >> 8) & 0xff)) == trackBuf[trackLen + 1]) {
+			else if (((checksum & 0xff) == trkBuf[trackLen])
+				&& (((checksum >> 8) & 0xff)) == trkBuf[trackLen + 1]) {
 
 				if (!(driveFile[driveNum]->seek(curTrack[driveNum] * trackLen))) {
 					displayError(QString("WRIT error seeking to %1").arg(curTrack[driveNum] * trackLen));
 					cmdBuf.rcode = STAT_WRITE_ERR;
 				}
-				else if (driveFile[driveNum]->write((char *) trackBuf, trackLen) != trackLen) {
+				else if (driveFile[driveNum]->write((char *) trkBuf, trackLen) != trackLen) {
 					displayError("WRIT file write error");
 					cmdBuf.rcode = STAT_WRITE_ERR;
 				}
@@ -554,7 +566,7 @@ void FDCDialog::timerSlot()
 			cmdBuf.command[1] = 'S';
 			cmdBuf.command[2] = 'T';
 			cmdBuf.command[3] = 'A';
-			cmdBuf.checksum = calcChecksum(cmdBuf.asBytes, COMMAND_LENGTH);
+			cmdBuf.checksum = calcChecksum(cmdBuf.asBytes, CMD_LEN);
 		}
 
 		writeSerialPort(cmdBuf.asBytes, CMDBUF_SIZE);
@@ -568,6 +580,7 @@ void FDCDialog::timerSlot()
 		enableHead(0xff);
 
 		driveNum = cmdBuf.param1 & 0x00ff;
+
 		if (driveNum < MAX_DRIVE) {
 			enableStatus[driveNum] = true;
 			headStatus[driveNum] = (cmdBuf.param1 & 0xff00) >> 8;
@@ -590,15 +603,16 @@ void FDCDialog::timerSlot()
 			}
 		}
 
-		cmdBuf.checksum = calcChecksum(cmdBuf.asBytes, COMMAND_LENGTH);
+		cmdBuf.checksum = calcChecksum(cmdBuf.asBytes, CMD_LEN);
 
+//		serialPort->write((char *) cmdBuf.asBytes, CMDBUF_SIZE);
 		writeSerialPort(cmdBuf.asBytes, CMDBUF_SIZE);
 	}
-//	else {
-//		displayError(QString("Received unknown command"));
-//	}
+	else {
+		displayError(QString("Received unknown command"));
+	}
 
-	timer->start();
+//	displayDash(QString("%1").arg(writCount,6,10,QChar('0')), DASHBOARD_WRIT, 6, 6);
 }
 
 void FDCDialog::updateSerialPort()
@@ -635,17 +649,57 @@ void FDCDialog::updateSerialPort()
 	}
 }
 
-void FDCDialog::writeSerialPort(const quint8 *buffer, int len)
+//
+// Read len bytes into buffer with msec timeout
+//
+int FDCDialog::readSerialPort(const quint8 *buffer, int len, qint64 msec)
 {
-	if (serialPort->isOpen()) {
-		serialPort->write((char *) buffer, len);
+	int i = 0;
 
-		do {
-			serialPort->waitForBytesWritten(0);
-		} while (serialPort->bytesToWrite());
+	if (!serialPort->isOpen()) {
+		return -1;
 	}
+
+	QElapsedTimer timeout;
+	timeout.start();
+
+	do {
+		serialPort->waitForReadyRead(msec);	// Get more characters
+		i += serialPort->read((char *) buffer+i, len-i);
+	} while (i != -1 && i < len && !timeout.hasExpired(msec));
+
+	rbyteCount += i;
+//	displayDash(QString("%1").arg(rbyteCount,6,10,QChar('0')).left(6), DASHBOARD_STAT, 36, 6);
+
+	return i;
 }
 
+//
+// The FDC+ serial protocol is synchronous. Wait until the entire
+// buffer is sent. Returns -1 on error, true if all bytes were sent,
+// false if timeout.
+//
+int FDCDialog::writeSerialPort(const quint8 *buffer, int len, qint64 msec)
+{
+	if (!len) {
+		displayError(QString("write serial port len=%1").arg(len));
+		return -1;
+	}
+
+	serialPort->write((char *) buffer, len);
+
+	wbyteCount += len;
+//	displayDash(QString("%1").arg(wbyteCount,6,10,QChar('0')).left(6), DASHBOARD_STAT, 44, 6);
+
+	QElapsedTimer timeout;
+	timeout.start();
+
+	while (serialPort->bytesToWrite() && !timeout.hasExpired(msec)) {
+		serialPort->waitForBytesWritten(msec);
+	}
+
+	return !serialPort->bytesToWrite();
+}
 void FDCDialog::updateIndicators()
 {
 	int drive;
