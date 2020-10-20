@@ -268,7 +268,7 @@ FDCDialog::FDCDialog(QWidget *parent)
 	timer = new QTimer(this);
 	timer->setTimerType(Qt::PreciseTimer);
 	connect(timer, &QTimer::timeout, this, &FDCDialog::timerSlot);
-	timer->start(10);	// 10ms timer
+	timer->start(100);	// 100ms timer
 
 	// Counters
 	tickCount = 0;
@@ -374,13 +374,6 @@ void FDCDialog::unloadButtonSlot(int drive)
 
 void FDCDialog::timerSlot()
 {
-	int i;
-	quint16 driveNum;
-	quint16 trackLen;
-	qint64 bytesRead;
-	quint16 checksum;
-
-
 	// Reset timer
 	tickCount++;
 
@@ -390,7 +383,17 @@ void FDCDialog::timerSlot()
 			clearError();
 		}
 	}
+}
 
+void FDCDialog::readyReadSlot()
+{
+	int i;
+	quint16 driveNum;
+	quint16 trackLen;
+	qint64 bytesRead;
+	quint16 checksum;
+
+#if 0
 	if (!serialPort->isOpen()) {
 		return;
 	}
@@ -398,6 +401,7 @@ void FDCDialog::timerSlot()
 	if (!serialPort->bytesAvailable()) {
 		return;
 	}
+#endif
 
 	bytesRead = readSerialPort(cmdBuf.asBytes, CMDBUF_SIZE, 50);
 
@@ -600,6 +604,7 @@ void FDCDialog::timerSlot()
 void FDCDialog::updateSerialPort()
 {
 	if (serialPort->isOpen()) {
+		disconnect(serialPort);
 		serialPort->clear();
 		serialPort->close();
 	}
@@ -621,6 +626,8 @@ void FDCDialog::updateSerialPort()
 		serialPort->setDataTerminalReady(true);
 		serialPort->setRequestToSend(true);
 		serialPort->clear();
+
+		connect(serialPort, &QSerialPort::readyRead, this, &FDCDialog::readyReadSlot);
 	}
 	else {
 		QMessageBox::critical(this,

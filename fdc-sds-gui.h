@@ -32,7 +32,7 @@
 #define DASHBOARD_READ		1
 #define	DASHBOARD_WRIT		2
 #define DASHBOARD_ERR		3			// Error row
-#define DASHBOARD_ERRTO		1000			// Error text timeout 10ms ticks
+#define DASHBOARD_ERRTO		100			// Error text timeout 100ms ticks
 
 typedef struct TCOMMAND {
 	union {
@@ -74,6 +74,7 @@ private slots:
 	void baudRateSlot(int index);
 	void loadButtonSlot(int drive);
 	void unloadButtonSlot(int drive);
+	void readyReadSlot();
 	void timerSlot();
 
 private:
