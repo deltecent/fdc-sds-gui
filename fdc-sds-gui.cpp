@@ -518,7 +518,7 @@ void FDCDialog::timerSlot()
 			trkBufIdx = 0;
 
 			do {
-				bytesAvail = serialPort->waitForReadyRead(100);
+				bytesAvail = serialPort->waitForReadyRead(250);
 				trkBufIdx += serialPort->read((char *) &trackBuf[trkBufIdx], TRACKBUF_LEN_CRC-trkBufIdx);
 			} while (trkBufIdx < trackLen + 2 && bytesAvail);
 
@@ -587,9 +587,9 @@ void FDCDialog::timerSlot()
 
 		serialPort->write((char *) cmdBuf.asBytes, CMDBUF_SIZE);
 	}
-	else {
-		displayError(QString("Received unknown command"));
-	}
+//	else {
+//		displayError(QString("Received unknown command"));
+//	}
 
 	timer->start();
 }
