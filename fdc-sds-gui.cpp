@@ -387,7 +387,8 @@ void FDCDialog::timerSlot()
 	displayDash(QString("%1").arg(bytesAvail,4,10,QChar('0')).left(4), DASHBOARD_STAT, 36, 4);
 	bytesRead = serialPort->read((char *) &cmdBuf.asBytes[cmdBufIdx], CMDBUF_SIZE-cmdBufIdx);
 
-	if (bytesRead == 0) {
+	if (bytesRead <= 0) {
+		cmdBuf.asBytes[0] = ' ';
 		cmdBufIdx = 0;
 		return;
 	}
@@ -405,7 +406,7 @@ void FDCDialog::timerSlot()
 	checksum = calcChecksum(cmdBuf.asBytes, COMMAND_LENGTH);
 
 	if (checksum != cmdBuf.checksum) {
-		displayError(QString("CRC ERROR calc=%1 recv=%2").arg(checksum,4,16).arg(cmdBuf.checksum,4,16));
+//		displayError(QString("CRC ERROR calc=%1 recv=%2").arg(checksum,4,16).arg(cmdBuf.checksum,4,16));
 	}
 
 	// READ command
@@ -464,7 +465,7 @@ void FDCDialog::timerSlot()
 		trackBuf[trackLen] = checksum & 0x00ff;			// LSB of checksum
 		trackBuf[trackLen+1] = (checksum >> 8) & 0x00ff;	// MSB of checksum
 
-		serialPort->write((char *) trackBuf, trackLen + 2);
+		writeSerialPort(trackBuf, trackLen + 2);
 	}
 
 	// WRIT command
@@ -477,6 +478,7 @@ void FDCDialog::timerSlot()
 		displayDash(QString("0x%1").arg(driveNum,2,16,QChar('0')), DASHBOARD_WRIT, 14, 4);
 		displayDash(QString("0x%1").arg(cmdBuf.param1 & 0x0fff,4,16,QChar('0')), DASHBOARD_WRIT, 20, 6);
 		displayDash(QString("0x%1").arg(cmdBuf.param2,4,16,QChar('0')), DASHBOARD_WRIT, 28, 6);
+		displayDash(QString("%1").arg("0000"), DASHBOARD_WRIT, 36, 4);
 
 		// Ignore invalid drive numbers
 		if (driveNum > MAX_DRIVE) {
@@ -513,19 +515,24 @@ void FDCDialog::timerSlot()
 		cmdBuf.checksum = calcChecksum(cmdBuf.asBytes, COMMAND_LENGTH);
 
 		if (cmdBuf.rcode == STAT_OK) {
-			serialPort->write((char *) cmdBuf.asBytes, CMDBUF_SIZE);
+			writeSerialPort(cmdBuf.asBytes, CMDBUF_SIZE);
 
+			QDeadlineTimer deadline(500);
 			trkBufIdx = 0;
 
 			do {
-				bytesAvail = serialPort->waitForReadyRead(250);
+				serialPort->waitForReadyRead(1);
 				trkBufIdx += serialPort->read((char *) &trackBuf[trkBufIdx], TRACKBUF_LEN_CRC-trkBufIdx);
-			} while (trkBufIdx < trackLen + 2 && bytesAvail);
+				displayDash(QString("%1").arg(trkBufIdx,4,10,QChar('0')).left(4), DASHBOARD_WRIT, 36, 4);
+			} while (trkBufIdx < trackLen + 2 && !(deadline.hasExpired()));
 
 			checksum = calcChecksum(trackBuf, trackLen);
 
-			if ((trkBufIdx = trackLen+2)
-				&& ((checksum & 0xff) == trackBuf[trackLen])
+			if (trkBufIdx != trackLen + 2) {
+				displayError(QString("WRIT track length (%1) error").arg(trkBufIdx));
+				cmdBuf.rcode = STAT_CHECKSUM_ERR;
+			}
+			else if (((checksum & 0xff) == trackBuf[trackLen])
 				&& (((checksum >> 8) & 0xff)) == trackBuf[trackLen + 1]) {
 
 				if (!(driveFile[driveNum]->seek(curTrack[driveNum] * trackLen))) {
@@ -538,7 +545,7 @@ void FDCDialog::timerSlot()
 				}
 			}
 			else {
-				displayError("WRIT checksum error");
+				displayError(QString("WRIT track checksum error"));
 				cmdBuf.rcode = STAT_CHECKSUM_ERR;
 			}
 
@@ -550,7 +557,7 @@ void FDCDialog::timerSlot()
 			cmdBuf.checksum = calcChecksum(cmdBuf.asBytes, COMMAND_LENGTH);
 		}
 
-		serialPort->write((char *) cmdBuf.asBytes, CMDBUF_SIZE);
+		writeSerialPort(cmdBuf.asBytes, CMDBUF_SIZE);
 	}
 
 	// STAT command
@@ -585,7 +592,7 @@ void FDCDialog::timerSlot()
 
 		cmdBuf.checksum = calcChecksum(cmdBuf.asBytes, COMMAND_LENGTH);
 
-		serialPort->write((char *) cmdBuf.asBytes, CMDBUF_SIZE);
+		writeSerialPort(cmdBuf.asBytes, CMDBUF_SIZE);
 	}
 //	else {
 //		displayError(QString("Received unknown command"));
@@ -625,6 +632,17 @@ void FDCDialog::updateSerialPort()
 			QString("Could not open serial port '%1' (%2)").arg(serialPort->portName()).arg(serialPort->error()));
 
 		serialPortBox->setCurrentIndex(-1);
+	}
+}
+
+void FDCDialog::writeSerialPort(const quint8 *buffer, int len)
+{
+	if (serialPort->isOpen()) {
+		serialPort->write((char *) buffer, len);
+
+		do {
+			serialPort->waitForBytesWritten(0);
+		} while (serialPort->bytesToWrite());
 	}
 }
 
@@ -705,6 +723,29 @@ void FDCDialog::clearError()
 {
 	displayDash(QString("").leftJustified(40), DASHBOARD_ERR, 14, 40);
 	errTimeout = DASHBOARD_ERRTO;
+}
+
+void FDCDialog::reject()
+{
+	QMessageBox::StandardButton r;
+
+	r = QMessageBox::question(this, "Exit Program", tr("Are you sure?"), QMessageBox::No | QMessageBox::Yes);
+
+	if (r != QMessageBox::Yes) {
+		return;
+	}
+
+	if (serialPort->isOpen()) {
+		serialPort->close();
+	}
+
+	for (int driveNum = 0; driveNum < MAX_DRIVE; driveNum++) {
+		if (driveFile[driveNum]->isOpen()) {
+			driveFile[driveNum]->close();
+		}
+	}
+
+	QDialog::reject();
 }
 
 int main(int argc, char **argv)

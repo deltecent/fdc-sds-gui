@@ -106,10 +106,12 @@ private:
 	void enableHead(quint8 driveNum);
 	void updateIndicators(void);
 	void updateSerialPort(void);
+	void writeSerialPort(const quint8 *buffer, int len);
 	quint16 calcChecksum(const quint8 *data, int length);
 	void displayDash(QString text, int row, int pos, int len);
 	void displayError(QString text);
-	void clearError();
+	void clearError(void);
+	void reject(void);
 };
 
 #endif
