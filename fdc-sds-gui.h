@@ -114,6 +114,7 @@ private:
 	quint32 rbyteCount;
 	quint32 wbyteCount;
 	quint32 errTimeout;
+	bool readActive;
 	DbgWidget *dbgWindow;
 
 	void enableDrive(quint8 driveNum);

@@ -263,6 +263,7 @@ FDCDialog::FDCDialog(QWidget *parent)
 	// Serial Port Object
 	serialPort = new QSerialPort;
 	baudRate = baudRateBox->currentData().toInt();
+	readActive = false;
 
 	// Start timer
 	timer = new QTimer(this);
@@ -402,6 +403,11 @@ void FDCDialog::readyReadSlot()
 		return;
 	}
 #endif
+
+	// If we already have a read active, return
+	if (readActive) {
+		return;
+	}
 
 	bytesRead = readSerialPort(cmdBuf.asBytes, CMDBUF_SIZE, 50);
 
@@ -643,21 +649,31 @@ void FDCDialog::updateSerialPort()
 //
 int FDCDialog::readSerialPort(const quint8 *buffer, int len, qint64 msec)
 {
+	int a;
 	int i = 0;
 
 	if (!serialPort->isOpen()) {
 		return -1;
 	}
 
+	readActive = true;
+
 	QElapsedTimer timeout;
 	timeout.start();
 
 	do {
-		serialPort->waitForReadyRead(10);	// Get more characters
-		i += serialPort->read((char *) buffer+i, len-i);
+		serialPort->waitForReadyRead(0);	// Get more characters
+		a = serialPort->read((char *) buffer+i, len-i);
+		if (a > 0) {
+			i += a;
+		}
 	} while (i != -1 && i < len && !timeout.hasExpired(msec));
-
+	
 	rbyteCount += i;
+
+	dbgWindow->append(QString().asprintf("Read %d bytes a=%d", i, a));
+
+	readActive = false;
 
 	return i;
 }
@@ -687,6 +703,7 @@ int FDCDialog::writeSerialPort(const quint8 *buffer, int len, qint64 msec)
 
 	return !serialPort->bytesToWrite();
 }
+
 void FDCDialog::updateIndicators()
 {
 	int drive;
