@@ -5,7 +5,6 @@
 #include <QTimer>
 #include <QFile>
 #include <QLabel>
-#include <QLCDNumber>
 #include <QProgressBar>
 #include <QTextEdit>
 #include <QLineEdit>

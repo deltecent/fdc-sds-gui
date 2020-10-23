@@ -289,11 +289,13 @@ FDCDialog::FDCDialog(QWidget *parent)
 	savePath = savePath + "../../../";
 #endif
 
+#ifdef DEBUG
 	// create debug window
 	dbgWindow = new DbgWidget();
 	dbgWindow->setGeometry(0, 0, 600, 400);
 	dbgWindow->setWindowTitle(tr("FDC+ Serial Drive Server Debug Output"));
 	dbgWindow->show();
+#endif
 }
 
 void FDCDialog::serialPortSlot(int index)
@@ -652,10 +654,12 @@ int FDCDialog::readSerialPort(const quint8 *buffer, int len, qint64 msec)
 	QElapsedTimer timeout;
 	timeout.start();
 
-	do {
+	i += serialPort->read((char *) buffer, len);
+
+	while (i != -1 && i < len && !timeout.hasExpired(msec)) {
 		serialPort->waitForReadyRead(10);	// Get more characters
 		i += serialPort->read((char *) buffer+i, len-i);
-	} while (i != -1 && i < len && !timeout.hasExpired(msec));
+	}
 
 	rbyteCount += i;
 
@@ -678,12 +682,8 @@ int FDCDialog::writeSerialPort(const quint8 *buffer, int len, qint64 msec)
 
 	wbyteCount += len;
 
-	QElapsedTimer timeout;
-	timeout.start();
-
-	while (serialPort->bytesToWrite() && !timeout.hasExpired(msec)) {
-		serialPort->waitForBytesWritten(msec);
-	}
+	// All writes are synchronous
+	serialPort->waitForBytesWritten(msec);
 
 	return !serialPort->bytesToWrite();
 }
@@ -786,8 +786,10 @@ void FDCDialog::reject()
 		}
 	}
 
+#ifdef DEBUG
 	// Close debug window
 	dbgWindow->close();
+#endif
 
 	QDialog::reject();
 }
