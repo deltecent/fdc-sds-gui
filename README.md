@@ -1,1 +1,5 @@
-TBD
+The Altair FDC+ is an enhanced version of the original MITS 8" floppy disk controller for the Altair 8800 created by Mike Douglas. The FDC+ is a 100% compatible drop-in replacement for the original two-board Altair FDC. The FDC+ can serve as a replacement for a missing or defective Altair FDC, or you can use the FDC+ as a reference point while restoring original floppy equipment to working condition.
+
+The FDC+ includes a built-in, high speed serial port that can connect to a PC running a serial disk server. From the perspective of the Altair computer and software, it appears that an Altair/Pertec drive is attached. Performance of the serial drive is virtually identical to the original Altair floppy drive. Both the Altair 8" drive and Minidisk drive are supported. Numerous disk images – available via links on the FDC+ web page – can be mounted on the PC server and run from your Altair computer. Disk images include a customized version of CP/M that provides 8Mb capacity on drives A & B and standard Altair drives on C & D.
+
+This repository contains an FDC+ Serial Drive Server (FDC-SDS) that is compatible with the FDC+. The FDC-SDS is built on the Qt5 framework.
