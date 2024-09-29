@@ -210,7 +210,7 @@ FDCDialog::FDCDialog(QWidget *parent)
 	// Information
 	label = new QLabel(tr("FDC+ Serial Drive Server v1.0 BETA"));
 	infoLayout->addWidget(label);
-	label = new QLabel(tr("(c)2020 Deltec Enterprises"));
+	label = new QLabel(tr("(c) 2020 Deltec Enterprises"));
 	label->setAlignment(Qt::AlignRight);  
 	infoLayout->addWidget(label);
 
@@ -415,7 +415,9 @@ void FDCDialog::readyReadSlot()
 
 	if (bytesRead < CMDBUF_SIZE) {
 		displayError(QString("received partial command buffer %1/10 bytes").arg(bytesRead));
+#ifdef DEBUG
 		dbgWindow->hexDump(cmdBuf.asBytes, bytesRead);
+#endif
 		return;
 	}
 
@@ -651,7 +653,6 @@ void FDCDialog::updateSerialPort()
 //
 int FDCDialog::readSerialPort(const quint8 *buffer, int len, qint64 msec)
 {
-	int a;
 	int i = 0;
 
 	if (!serialPort->isOpen()) {
@@ -672,7 +673,9 @@ int FDCDialog::readSerialPort(const quint8 *buffer, int len, qint64 msec)
 
 	rbyteCount += i;
 
-	dbgWindow->append(QString().asprintf("Read %d bytes a=%d", i, a));
+#ifdef DEBUG
+	dbgWindow->append(QString().asprintf("Read %d bytes", i));
+#endif
 
 	readActive = false;
 
