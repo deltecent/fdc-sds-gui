@@ -226,6 +226,11 @@ FDCDialog::FDCDialog(QWidget *parent)
 	commLayout->addWidget(serialPortBox);
 
 	baudRateBox = new QComboBox;
+	baudRateBox->addItem("9600", 9600);
+	baudRateBox->addItem("19.2K", 19200);
+	baudRateBox->addItem("38.4K", 38400);
+	baudRateBox->addItem("57.6K", 57600);
+	baudRateBox->addItem("76.8K", 76800);
 	baudRateBox->addItem("230.4K", 230400);
 	baudRateBox->addItem("403.2K", 403200);
 	baudRateBox->addItem("460.8K", 460800);
